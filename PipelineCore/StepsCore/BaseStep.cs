@@ -7,13 +7,9 @@ namespace Pipeline.PipelineCore.StepsCore
 {
     public abstract class BaseStep<TIn, TOut> : IStep<TIn, TOut>
     {
-        protected readonly ChannelReader<TIn> ChannelIn;
-        protected readonly ChannelWriter<TOut> ChannelOut;
-        public BaseStep(ChannelReader<TIn> channelIn, ChannelWriter<TOut> channelOut)
-        {
-            ChannelIn = channelIn;
-            ChannelOut = channelOut;
-        }
+        protected ChannelReader<TIn> ChannelIn;
+        protected ChannelWriter<TOut> ChannelOut;
+
         public abstract TOut ProcessItem(TIn item);
 
         public virtual IAsyncEnumerable<TIn> ReadFromChannelAsync(CancellationToken ct)
@@ -31,6 +27,16 @@ namespace Pipeline.PipelineCore.StepsCore
                     await WriteToChannelAsync(processedItem, ct);
                 }
             }, ct, TaskCreationOptions.LongRunning);
+        }
+
+        public void AssignInputChannel(ChannelReader<TIn> channel)
+        {
+            ChannelIn = channel;
+        }
+
+        public void AssignOutputChannel(ChannelWriter<TOut> channel)
+        {
+            ChannelOut = channel;
         }
 
         public virtual async Task WriteToChannelAsync(TOut item, CancellationToken ct)
