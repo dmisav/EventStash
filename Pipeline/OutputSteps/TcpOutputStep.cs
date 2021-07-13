@@ -34,11 +34,13 @@ namespace Pipeline.OutputSteps
             {
                 _tcpSender = new TcpSender();
                 _tcpSender.StartClient(_server, _port);
-                var iterator = _in.ReadAllAsync(ct);
-
-                await foreach (var msg in ReadFromChannelAsync(ct))
+                
+                while (true)
                 {
-                    _tcpSender.Send(msg);
+                    await foreach (var msg in ReadFromChannelAsync(ct))
+                    {
+                        _tcpSender.Send(msg);
+                    }
                 }
             }, ct);
         }
