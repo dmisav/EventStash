@@ -1,4 +1,8 @@
-﻿using Pipeline.Configuration;
+﻿using Pipeline.AutoScaling;
+using Pipeline.Configuration;
+using Pipeline.Helpers;
+using Pipeline.Models;
+using Pipeline.Monitoring;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,20 +15,33 @@ namespace Pipeline.PipelineCore.StepsCore
     public abstract class ScalableStep<TIn, TOut> : RegularStep<TIn, TOut>
     {
         private readonly ScalingOptions _scalingOptions;
+        private readonly TrendChecker _trendChecker;
+
+        private Task _currentRoutine;
 
         public ScalableStep(ScalingOptions scalingOptions) 
         {
             _scalingOptions = scalingOptions ?? throw new ArgumentNullException(nameof(scalingOptions));
+
+            _trendChecker = new TrendChecker(scalingOptions.TrendDecisionCount);
+
+            _trendChecker.StateActionRequired += ProcessStateAction;
+
+            Task.Run(async () => 
+            {
+                await MonitorAsync(_scalingOptions.MonitoringOptions);
+            }, _scalingOptions.MonitoringOptions.CancellationToken);
         }
 
         public override Task StartRoutine(CancellationToken ct)
         {
-            return new (() =>
+            _currentRoutine = new(() =>
             {
                 var splittedChannels = Split(_scalingOptions, ct);
                 Merge(splittedChannels, ct);
             }, ct, TaskCreationOptions.LongRunning);
 
+            return _currentRoutine;
         }
 
         private IList<ChannelReader<TIn>> Split(ScalingOptions scalingOptions, CancellationToken ct)
@@ -69,23 +86,38 @@ namespace Pipeline.PipelineCore.StepsCore
             }, ct);
         }
 
-        private void Scale()
+        private void ProcessStateAction(object sender, State state)
         {
-            var currParallelCount = _scalingOptions.ParallelCount;
-            var newParallelCount = _scalingOptions.ScalingFactor * currParallelCount;
+            switch (state)
+            {
+                case State.Growing:
+                    _scalingOptions.ParallelCount = AutoScalerHelper.ScaleParallelCount(_scalingOptions);
+                    break;
+                case State.Sinking:
+                    _scalingOptions.ParallelCount = AutoScalerHelper.UnscaleParallelCount(_scalingOptions);
+                    break;
+                case State.Steady:
+                    break;
+            }
 
-            if (_scalingOptions.MaxParallelCount != -1)
-                newParallelCount = Math.Min(newParallelCount, _scalingOptions.MaxParallelCount);
-
-            _scalingOptions.ParallelCount = newParallelCount;
+            _scalingOptions.Gate.Release();
         }
 
-        private void Unscale()
+        private async Task MonitorAsync(CronOptions cronOptions)
         {
-            var currParallelCount = _scalingOptions.ParallelCount;
-            var newParallelCount = currParallelCount / _scalingOptions.ScalingFactor;
+            var monitoringAction = new Action(() =>
+            {
+                var count = GetCount();
+                _trendChecker.UpdateCount(count);
+            });
 
-            _scalingOptions.ParallelCount = Math.Max(newParallelCount, 1);
+
+            await Cron.RecurrAsync(monitoringAction, cronOptions);
+        }
+
+        private int GetCount()
+        {
+            return ChannelIn.Count;
         }
     }
 }

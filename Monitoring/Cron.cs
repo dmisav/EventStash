@@ -1,6 +1,5 @@
 ﻿using Pipeline.Configuration;
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Pipeline.Monitoring
@@ -9,11 +8,11 @@ namespace Pipeline.Monitoring
     {
         private Cron() {}
 
-        public static async Task RecurrAsync(CronOptions options)
+        public static async Task RecurrAsync(Action actionToPerform, CronOptions options)
         {
             while (!options.CancellationToken.IsCancellationRequested)
             {
-                options.ActionToPerform();
+                actionToPerform();
                 await Task.Delay(TimeSpan.FromSeconds(options.IntervalSeconds), options.CancellationToken);
             }
         }
