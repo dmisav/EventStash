@@ -12,7 +12,8 @@ namespace FakeHost
             var cts = new CancellationTokenSource();
             new ChannelPipeline()
                 .AddInput(new FakeInput())
-                .AddStep(new FakeStep())
+                .AddStep(new FakeStep(1))
+                .AddStep(new FakeStep(2))
                 .AddOutput(new FakeOutput())
                 .Create(cts.Token)
                 .Start();

@@ -13,7 +13,7 @@ namespace Pipeline.FakeSteps
         {
             return new Task(async () =>
             {
-                for (int i = 0; i < 100; i++)
+                for (int i = 1; i <= 1000000; i++)
                 {
                     await WriteToChannelAsync($"Input {i};", ct);
                 }
