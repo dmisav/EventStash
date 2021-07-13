@@ -11,7 +11,8 @@ namespace Pipeline.PipelineCore.StepsCore
     public abstract class ScalableStep<TIn, TOut> : RegularStep<TIn, TOut>
     {
         private readonly ScalingOptions _scalingOptions;
-        public ScalableStep(ChannelReader<TIn> channelIn, ChannelWriter<TOut> channelOut, ScalingOptions scalingOptions) : base(channelIn, channelOut) 
+
+        public ScalableStep(ScalingOptions scalingOptions) 
         {
             _scalingOptions = scalingOptions ?? throw new ArgumentNullException(nameof(scalingOptions));
         }
