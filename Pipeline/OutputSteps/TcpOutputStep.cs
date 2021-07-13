@@ -32,8 +32,8 @@ namespace Pipeline.OutputSteps
         {
             return new(async () =>
             {
-                _tcpSender = new TcpSender();
-                _tcpSender.StartClient(_server, _port);
+                _tcpSender = new TcpSender(_server, _port);
+                _tcpSender.StartClient();
                 
                 while (true)
                 {
