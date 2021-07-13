@@ -1,4 +1,5 @@
 ﻿using Pipeline.Configuration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -12,12 +13,12 @@ namespace Pipeline.PipelineCore.StepsCore
         private readonly ScalingOptions _scalingOptions;
         public ScalableStep(ChannelReader<TIn> channelIn, ChannelWriter<TOut> channelOut, ScalingOptions scalingOptions) : base(channelIn, channelOut) 
         {
-            _scalingOptions = scalingOptions;
+            _scalingOptions = scalingOptions ?? throw new ArgumentNullException(nameof(scalingOptions));
         }
 
         public override Task StartRoutine(CancellationToken ct)
         {
-            return new Task(() =>
+            return new (() =>
             {
                 var splittedChannels = Split(_scalingOptions, ct);
                 Merge(splittedChannels, ct);
@@ -27,6 +28,8 @@ namespace Pipeline.PipelineCore.StepsCore
 
         private IList<ChannelReader<TIn>> Split(ScalingOptions scalingOptions, CancellationToken ct)
         {
+            var parallelCount = scalingOptions.MaxParallelCount == 0 ? scalingOptions.ParallelCount : Math.Min(scalingOptions.ParallelCount, scalingOptions.MaxParallelCount);
+
             var outputs = new Channel<TIn>[scalingOptions.ParallelCount];
             for (var i = 0; i < scalingOptions.ParallelCount; i++)
                 outputs[i] = Channel.CreateUnbounded<TIn>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
@@ -63,6 +66,25 @@ namespace Pipeline.PipelineCore.StepsCore
 
                 await Task.WhenAll(inputs.Select(i => Redirect(i)).ToArray());
             }, ct);
+        }
+
+        private void Scale()
+        {
+            var currParallelCount = _scalingOptions.ParallelCount;
+            var newParallelCount = _scalingOptions.ScalingFactor * currParallelCount;
+
+            if (_scalingOptions.MaxParallelCount != -1)
+                newParallelCount = Math.Min(newParallelCount, _scalingOptions.MaxParallelCount);
+
+            _scalingOptions.ParallelCount = newParallelCount;
+        }
+
+        private void Unscale()
+        {
+            var currParallelCount = _scalingOptions.ParallelCount;
+            var newParallelCount = currParallelCount / _scalingOptions.ScalingFactor;
+
+            _scalingOptions.ParallelCount = Math.Max(newParallelCount, 1);
         }
     }
 }
