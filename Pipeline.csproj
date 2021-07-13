@@ -8,6 +8,7 @@
     <Compile Remove="EventStash\**" />
     <EmbeddedResource Remove="EventStash\**" />
     <None Remove="EventStash\**" />
+    <PackageReference Include="System.IO.Pipelines" Version="5.0.1" />
   </ItemGroup>
 
 </Project>
