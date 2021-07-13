@@ -4,6 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Threading;
 using Pipeline.FakeSteps;
+using Pipeline.InputSteps;
+using Pipeline.OutputSteps;
+using Pipeline.Steps;
 
 namespace Start
 {
@@ -17,10 +20,18 @@ namespace Start
             Console.WriteLine("Starting Execution");
 
             var cts = new CancellationTokenSource();
+            //new Pipeline.PipelineCore.Pipeline()
+            //    .AddInput(new FakeInput())
+            //    .AddStep(new FakeStep(1))
+            //    .AddStep(new FakeStep(2))
+            //    .AddOutput(new FakeOutput())
+            //    .Create(cts.Token)
+            //    .Start();
             new Pipeline.PipelineCore.Pipeline()
-                .AddInput(new FakeInput())
-                .AddStep(new FakeStep(1))
-                .AddStep(new FakeStep(2))
+                .AddInput(new TcpInputStep(555))
+                .AddStep(new ParserStep())
+                .AddStep(new SerializationStep())
+                //.AddOutput(new TcpOutputStepIOutput("127.0.0.1", 556))
                 .AddOutput(new FakeOutput())
                 .Create(cts.Token)
                 .Start();
