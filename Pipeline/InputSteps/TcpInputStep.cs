@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Pipeline.Models;
+using Pipeline.PipelineCore;
 
 namespace Pipeline.InputSteps
 {
@@ -18,13 +19,15 @@ namespace Pipeline.InputSteps
 
         public TcpInputStep(int port) => _port = port;
 
-        public async ValueTask WriteToChannelAsync(string item, CancellationToken ct)
+        public async ValueTask WriteToChannelAsync(string item, CancellationTokenWrapper tokenWrapper)
         {
-            await _out.WriteAsync(item, ct);
+            await _out.WriteAsync(item, tokenWrapper.Token);
         }
 
         public Task StartRoutine(CancellationToken ct)
         {
+            var tokenWrapper = new CancellationTokenWrapper(ct);
+
             return new(async () =>
             {
                 var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
@@ -34,7 +37,7 @@ namespace Pipeline.InputSteps
                 while (true)
                 {
                     var socket = await listenSocket.AcceptAsync();
-                    _ = ProcessLinesAsync(socket, ct);
+                    _ = ProcessLinesAsync(socket, tokenWrapper);
                 }
             }, ct, TaskCreationOptions.LongRunning);
         }
@@ -44,7 +47,7 @@ namespace Pipeline.InputSteps
             _out = channel;
         }
 
-        private async Task ProcessLinesAsync(Socket socket, CancellationToken ct)
+        private async Task ProcessLinesAsync(Socket socket, CancellationTokenWrapper tokenWrapper)
         {
             // Create a PipeReader over the network stream
             var stream = new NetworkStream(socket);
@@ -52,7 +55,7 @@ namespace Pipeline.InputSteps
 
             while (true)
             {
-                ReadResult result = await reader.ReadAsync(ct);
+                ReadResult result = await reader.ReadAsync(tokenWrapper.Token);
                 ReadOnlySequence<byte> buffer = result.Buffer;
 
                 while (TryReadLine(ref buffer, out ReadOnlySequence<byte> line))
@@ -60,7 +63,7 @@ namespace Pipeline.InputSteps
                     // Process the line.
                     foreach (var segment in line)
                     {
-                        await WriteToChannelAsync(Encoding.UTF8.GetString(segment.Span), ct);
+                        await WriteToChannelAsync(Encoding.UTF8.GetString(segment.Span), tokenWrapper);
                     }
                 }
 
