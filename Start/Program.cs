@@ -2,6 +2,7 @@
 using Autofac.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Text;
 using System.Threading;
@@ -54,14 +55,22 @@ namespace Start
         private static void DrawLogo()
         {
             Console.OutputEncoding = Encoding.UTF8;
+            Console.WindowHeight = 50;
+            Console.WindowWidth = 80;
 
-            Console.WriteLine("                                                    ");
+            Console.WriteLine();
             Console.WriteLine(" /\\   ‾\\  /‾‾‾‾\\  /‾‾‾‾\\  /‾‾‾‾\\  ‾|‾  /‾‾‾‾\\ ");
             Console.WriteLine(" | \\   |  |       |       |        |   |           ");
             Console.WriteLine(" |  \\  |  |----|  \\----\\  \\----\\   |   |----|  ");
             Console.WriteLine(" |   \\ |  |            |       |   |   |           ");
             Console.WriteLine(" \\_   \\/  \\____/  \\____/  \\____/  _|_  \\____/ ");
-            Console.WriteLine("                                                    ");
+            Console.WriteLine();
+            Console.WriteLine(" /‾‾‾‾\\                          /‾‾‾‾\\                             ");
+            Console.WriteLine(" |                               |                                    ");
+            Console.WriteLine(" |----| |    | |‾‾‾‾ |\\  | ‾‾|‾‾ \\----\\ ‾‾|‾‾   /\\   /‾‾‾' |   |  ");
+            Console.WriteLine(" |       \\  /  |---  | \\ |   |        |   |    /--\\  \\---\\ |---| ");
+            Console.WriteLine(" \\____/   \\/   |____ |  \\|   |   \\____/   |   |    | ,___/ |   |  ");
+            Console.WriteLine();
 
             Bitmap bmpSrc = new Bitmap(@"Resources\Nessie.bmp", true);
             ImageDrawer.ConsoleWriteImage(bmpSrc);
