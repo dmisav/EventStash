@@ -43,7 +43,7 @@ namespace Pipeline.PipelineCore.StepsCore
             ChannelOut = channel;
         }
 
-        public virtual async Task WriteToChannelAsync(TOut item, CancellationToken ct)
+        public virtual async ValueTask WriteToChannelAsync(TOut item, CancellationToken ct)
         {
             await ChannelOut.WriteAsync(item, ct);
         }
