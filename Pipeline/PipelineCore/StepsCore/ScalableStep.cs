@@ -14,7 +14,7 @@ namespace Pipeline.PipelineCore.StepsCore
 {
     public abstract class ScalableStep<TIn, TOut> : BaseStep<TIn, TOut>
     {
-        private readonly ScalingOptions _scalingOptions;
+        private ScalingOptions _scalingOptions;
         private readonly TrendChecker _trendChecker;
         private readonly SemaphoreSlim _taskReloadGate;
         public ScalableStep(ScalingOptions scalingOptions) 
@@ -59,7 +59,7 @@ namespace Pipeline.PipelineCore.StepsCore
             var outputs = new Channel<TIn>[scalingOptions.ParallelCount];
             for (var i = 0; i < scalingOptions.ParallelCount; i++)
             {
-                var options = new BoundedChannelOptions(50) { SingleReader = true, SingleWriter = true};
+                var options = new BoundedChannelOptions(scalingOptions.ParallelQueueSize) { SingleReader = true, SingleWriter = true};
                 outputs[i] = Channel.CreateBounded<TIn>(options);
             }
 
@@ -98,20 +98,14 @@ namespace Pipeline.PipelineCore.StepsCore
             switch (state)
             {
                 case State.Growing:
-                    var scaledCount = AutoScalerHelper.ScaleParallelCount(_scalingOptions);
-
-                    if (_scalingOptions.ParallelCount == scaledCount)
+                    if (!AutoScalerHelper.IsScalingPossible(ref _scalingOptions))
                         return;
 
-                    _scalingOptions.ParallelCount = scaledCount;
                     break;
                 case State.Sinking:
-                    var unscaledCount = AutoScalerHelper.UnscaleParallelCount(_scalingOptions);
-
-                    if (_scalingOptions.ParallelCount == unscaledCount)
+                    if (!AutoScalerHelper.IsUnscalingPossible(ref _scalingOptions))
                         return;
 
-                    _scalingOptions.ParallelCount = unscaledCount;
                     break;
                 case State.Steady:
                     return;
