@@ -7,8 +7,9 @@ namespace Pipeline.Configuration
         public int ParallelCount { get; set; }
         public int MaxParallelCount { get; set; } = -1; // no limitation by default
         public int ScalingFactor { get; set; } = 2;
+        public int ParallelQueueSize { get; set; }
+        public int MaxParallelQueueSize { get; set; } = -1; // no limitation by default
         public int TrendDecisionCount { get; set; }
         public CronOptions MonitoringOptions { get; set; }
-        public SemaphoreSlim Gate { get; set; } = new SemaphoreSlim(0);
     }
 }

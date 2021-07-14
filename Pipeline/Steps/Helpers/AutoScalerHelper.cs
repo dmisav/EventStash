@@ -5,7 +5,7 @@ namespace Pipeline.Helpers
 {
     public static class AutoScalerHelper
     {
-        public static int ScaleParallelCount(ScalingOptions options)
+        public static bool IsScalingPossible(ref ScalingOptions options)
         {
             var currParallelCount = options.ParallelCount;
             var newParallelCount = options.ScalingFactor * currParallelCount;
@@ -13,15 +13,30 @@ namespace Pipeline.Helpers
             if (options.MaxParallelCount != -1)
                 newParallelCount = Math.Min(newParallelCount, options.MaxParallelCount);
 
-            return newParallelCount;
+            var currQueueSize = options.ParallelQueueSize;
+            var newQueueSize = options.ScalingFactor * currQueueSize;
+
+            if (options.MaxParallelQueueSize != -1)
+                newQueueSize = Math.Min(newQueueSize, options.MaxParallelQueueSize);
+
+            options.ParallelCount = newParallelCount;
+            options.ParallelQueueSize = newQueueSize;
+
+            return currParallelCount != newParallelCount;
         }
 
-        public static int UnscaleParallelCount(ScalingOptions options)
+        public static bool IsUnscalingPossible(ref ScalingOptions options)
         {
             var currParallelCount = options.ParallelCount;
             var newParallelCount = currParallelCount / options.ScalingFactor;
 
-            return Math.Max(newParallelCount, 1);
+            var currQueueSize = options.ParallelQueueSize;
+            var newQueueSize = currQueueSize / options.ScalingFactor;
+
+            options.ParallelCount = Math.Max(newParallelCount, 1);
+            options.ParallelQueueSize = newQueueSize == 0 ? currQueueSize : newQueueSize;
+
+            return currParallelCount != newParallelCount;
         }
     }
 }
