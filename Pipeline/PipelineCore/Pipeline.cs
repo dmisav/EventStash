@@ -6,6 +6,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Pipeline.Models;
 using Pipeline.Models.Base;
+using Pipeline.PipelineCore.StepsCore;
 
 namespace Pipeline.PipelineCore
 {
@@ -27,8 +28,11 @@ namespace Pipeline.PipelineCore
         public IPipeline AddInput<TIn>(IInput<TIn> input)
         {
             _input = input;
+
             var channel = Channel.CreateUnbounded<TIn>(_channelOptions);
+
             input.AssignOutputChannel(channel.Writer);
+
             _channels.Add(channel);
             _pipelineTypes.Add(typeof(TIn));
 
@@ -44,10 +48,14 @@ namespace Pipeline.PipelineCore
                 throw new Exception("Can't add step due to previous block output and current step input type mismatch");
 
             _steps.Add(step);
-            var channel = Channel.CreateUnbounded<TOut>(_channelOptions);
+
+            var channelOptions = PrepareChannelOptionsForStep(step);
+            var channel = Channel.CreateUnbounded<TOut>(channelOptions);
             var lastChannel = (Channel<TIn>)_channels.Last();
+
             step.AssignInputChannel(lastChannel.Reader);
             step.AssignOutputChannel(channel.Writer);
+
             _channels.Add(channel);
             _pipelineTypes.Add(typeof(TOut));
 
@@ -92,6 +100,14 @@ namespace Pipeline.PipelineCore
             {
                 task.Start();
             }
+        }
+
+        private UnboundedChannelOptions PrepareChannelOptionsForStep<TIn, TOut>(IStep<TIn, TOut> step)
+        {
+            if (step is ScalableStep<TIn, TOut>)
+                return new UnboundedChannelOptions { SingleReader = true, SingleWriter = false };
+
+            return new UnboundedChannelOptions { SingleReader = true, SingleWriter = true };
         }
     }
 }
