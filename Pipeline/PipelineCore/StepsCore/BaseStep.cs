@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Pipeline.Models;
 
 namespace Pipeline.PipelineCore.StepsCore
 {
@@ -21,10 +22,13 @@ namespace Pipeline.PipelineCore.StepsCore
         {
             return new Task(async () =>
             {
-                await foreach (var item in ReadFromChannelAsync(ct))
+                while (!ct.IsCancellationRequested)
                 {
-                    var processedItem = ProcessItem(item);
-                    await WriteToChannelAsync(processedItem, ct);
+                    await foreach (var item in ReadFromChannelAsync(ct))
+                    {
+                        var processedItem = ProcessItem(item);
+                        await WriteToChannelAsync(processedItem, ct);
+                    }
                 }
             }, ct, TaskCreationOptions.LongRunning);
         }

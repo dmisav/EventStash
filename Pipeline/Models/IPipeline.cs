@@ -1,6 +1,4 @@
 ﻿using System.Threading;
-using System.Threading.Tasks;
-using Pipeline.Configuration;
 
 namespace Pipeline.Models
 {
@@ -9,7 +7,7 @@ namespace Pipeline.Models
         IPipeline AddInput<TIn>(IInput<TIn> input);
         IPipeline AddStep<TIn, TOut>(IStep<TIn, TOut> step);
         IPipeline AddOutput<TOut>(IOutput<TOut> output);
-        IPipeline Create(ScalingOptions scalingOptions);
-        Task Start(CancellationToken ct);
+        IPipeline Create(CancellationToken ct);
+        void Start();
     }
 }
