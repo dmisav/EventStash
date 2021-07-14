@@ -20,12 +20,9 @@ namespace Pipeline.OutputSteps
             _port = port;
         }
 
-        public async IAsyncEnumerable<string> ReadFromChannelAsync(CancellationToken ct)
+        public IAsyncEnumerable<string> ReadFromChannelAsync(CancellationToken ct)
         {
-            await foreach (var dataPoint in _in.ReadAllAsync(ct))
-            {
-                yield return dataPoint;
-            }
+            return _in.ReadAllAsync(ct);
         }
 
         public Task StartRoutine(CancellationToken ct)

@@ -25,15 +25,12 @@ namespace Pipeline.AutoScaling
             {
                 var currState = CalculateState();
 
-                if (currState == State.Steady)
-                    return;
-
                 StateActionRequired(this, currState);
             }
 
         }
 
-        public State CalculateState()
+        private State CalculateState()
         {
             var copy = new List<int>(_trend);
             _trend.Clear();
