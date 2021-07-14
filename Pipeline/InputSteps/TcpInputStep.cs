@@ -18,7 +18,7 @@ namespace Pipeline.InputSteps
 
         public TcpInputStep(int port) => _port = port;
 
-        public async Task WriteToChannelAsync(string item, CancellationToken ct)
+        public async ValueTask WriteToChannelAsync(string item, CancellationToken ct)
         {
             await _out.WriteAsync(item, ct);
         }

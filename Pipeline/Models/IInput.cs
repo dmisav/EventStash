@@ -7,7 +7,7 @@ namespace Pipeline.Models
 {
     public interface IInput<TIn> : IPipelineBlock
     {
-        Task WriteToChannelAsync(TIn item, CancellationToken ct);
+        ValueTask WriteToChannelAsync(TIn item, CancellationToken ct);
         void AssignOutputChannel(ChannelWriter<TIn> channel);
     }
 }

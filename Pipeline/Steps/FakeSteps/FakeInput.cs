@@ -20,7 +20,7 @@ namespace Pipeline.FakeSteps
             }, ct);
         }
 
-        public async Task WriteToChannelAsync(string item, CancellationToken ct)
+        public async ValueTask WriteToChannelAsync(string item, CancellationToken ct)
         {
             await _out.WriteAsync(item, ct);
         }
