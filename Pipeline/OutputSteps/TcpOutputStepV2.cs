@@ -41,9 +41,9 @@ namespace Pipeline.OutputSteps
             var outputs = new Channel<string>[_parallelism];
             for (var i = 0; i < _parallelism; i++)
             {
-                var options = new BoundedChannelOptions(_parallelism)
+                var options = new UnboundedChannelOptions
                     {SingleReader = true, SingleWriter = true};
-                outputs[i] = Channel.CreateBounded<string>(options);
+                outputs[i] = Channel.CreateUnbounded<string>(options);
             }
 
             return outputs;
@@ -62,7 +62,7 @@ namespace Pipeline.OutputSteps
 
                 foreach (var ch in channels)
                     ch.Writer.Complete();
-            }, ct, TaskCreationOptions.LongRunning);
+            }, ct);
         }
 
         private async Task Process(ChannelReader<string> input)
