@@ -36,7 +36,7 @@ namespace Pipeline.InputSteps
                     var socket = await listenSocket.AcceptAsync();
                     _ = ProcessLinesAsync(socket, ct);
                 }
-            }, ct);
+            }, ct, TaskCreationOptions.LongRunning);
         }
 
         public void AssignOutputChannel(ChannelWriter<string> channel)
