@@ -2,11 +2,14 @@
 using Autofac.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Drawing;
+using System.Text;
 using System.Threading;
 using Pipeline.FakeSteps;
 using Pipeline.InputSteps;
 using Pipeline.OutputSteps;
 using Pipeline.Steps;
+using Start.Image;
 
 namespace Start
 {
@@ -17,7 +20,7 @@ namespace Start
         {
             RegisterServices();
 
-            Console.WriteLine("Starting Execution");
+            DrawLogo();
 
             var cts = new CancellationTokenSource();
             //new Pipeline.PipelineCore.Pipeline()
@@ -46,6 +49,24 @@ namespace Start
                     cts.Cancel();
                 }
             }
+        }
+
+        private static void DrawLogo()
+        {
+            Console.OutputEncoding = Encoding.UTF8;
+
+            Console.WriteLine("                                                    ");
+            Console.WriteLine(" /\\   ‾\\  /‾‾‾‾\\  /‾‾‾‾\\  /‾‾‾‾\\  ‾|‾  /‾‾‾‾\\ ");
+            Console.WriteLine(" | \\   |  |       |       |        |   |           ");
+            Console.WriteLine(" |  \\  |  |----|  \\----\\  \\----\\   |   |----|  ");
+            Console.WriteLine(" |   \\ |  |            |       |   |   |           ");
+            Console.WriteLine(" \\_   \\/  \\____/  \\____/  \\____/  _|_  \\____/ ");
+            Console.WriteLine("                                                    ");
+
+            Bitmap bmpSrc = new Bitmap(@"Resources\Nessie.bmp", true);
+            ImageDrawer.ConsoleWriteImage(bmpSrc);
+
+            Console.WriteLine();
         }
 
         private static void RegisterServices()
