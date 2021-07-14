@@ -2,51 +2,81 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Pipeline.OutputSteps
 {
     public class TcpSender
-    {        
-        Socket _socket;
-        public void StartClient(string serverHostName,int port)
+    {
+        private Socket _socket;
+        private string _serverHostName;
+        private int _port;
+        public TcpSender(string serverHostName, int port)
         {
-            byte[] bytes = new byte[1024];
+            _serverHostName = serverHostName;
+            _port = port;
+        }
 
-            try
+        public void StartClient()
+        {
             {
-                IPHostEntry host = Dns.GetHostEntry(serverHostName);
-                IPAddress ipAddress = host.AddressList[0];
-                IPEndPoint remoteEP = new IPEndPoint(ipAddress, port);
-                _socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-             
                 try
                 {
-                    _socket.Connect(remoteEP);
-                }
-                catch (ArgumentNullException ane)
-                {
-                   //todo
-                }
-                catch (SocketException se)
-                {
-                   //todo
+                    IPHostEntry host = Dns.GetHostEntry(_serverHostName);
+                    IPAddress ipAddress = host.AddressList[0];
+                    IPEndPoint remoteEP = new IPEndPoint(ipAddress, _port);
+                    _socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+                    try
+                    {
+                        if (!_socket.Connected)
+                        {
+                            _socket.Connect(remoteEP);
+                        }
+                    }
+                    catch (ArgumentNullException ane)
+                    {
+                        //todo                    
+                    }
+                    catch (SocketException se)
+                    {
+                        //todo
+                        var i = 30;
+                        while (i > 0)
+                        {
+                            Task.Delay(2000);
+                            if (!_socket.Connected)
+                            {
+                                _socket.Connect(remoteEP);
+                            }
+                            i--;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        //todo
+                    }
+
                 }
                 catch (Exception e)
                 {
-                   //todo
+                    //todo
                 }
-
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.ToString());
             }
         }
 
         public void Send(string message)
         {
-          byte[] msg = Encoding.ASCII.GetBytes(message);
-          _socket.Send(msg);
+            byte[] msg = Encoding.ASCII.GetBytes(message);
+            try
+            {
+                _socket.Send(msg);
+            }
+            catch (SocketException se)
+            {
+                StartClient();
+                _socket.Send(msg);
+            }
         }
 
         public void ShutClient()

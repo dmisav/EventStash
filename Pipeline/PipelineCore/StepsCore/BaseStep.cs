@@ -13,21 +13,23 @@ namespace Pipeline.PipelineCore.StepsCore
 
         public abstract TOut ProcessItem(TIn item);
 
-        public virtual IAsyncEnumerable<TIn> ReadFromChannelAsync(CancellationToken ct)
+        public virtual IAsyncEnumerable<TIn> ReadFromChannelAsync(CancellationTokenWrapper tokenWrapper)
         {
-            return ChannelIn.ReadAllAsync(ct);
+            return ChannelIn.ReadAllAsync(tokenWrapper.Token);
         }
 
         public virtual Task StartRoutine(CancellationToken ct)
         {
+            var tokenWrapper = new CancellationTokenWrapper(ct);
+
             return new Task(async () =>
             {
                 while (!ct.IsCancellationRequested)
                 {
-                    await foreach (var item in ReadFromChannelAsync(ct))
+                    await foreach (var item in ReadFromChannelAsync(tokenWrapper))
                     {
                         var processedItem = ProcessItem(item);
-                        await WriteToChannelAsync(processedItem, ct);
+                        await WriteToChannelAsync(processedItem, tokenWrapper);
                     }
                 }
             }, ct, TaskCreationOptions.LongRunning);
@@ -43,9 +45,9 @@ namespace Pipeline.PipelineCore.StepsCore
             ChannelOut = channel;
         }
 
-        public virtual async Task WriteToChannelAsync(TOut item, CancellationToken ct)
+        public virtual async ValueTask WriteToChannelAsync(TOut item, CancellationTokenWrapper tokenWrapper)
         {
-            await ChannelOut.WriteAsync(item, ct);
+            await ChannelOut.WriteAsync(item, tokenWrapper.Token);
         }
     }
 }

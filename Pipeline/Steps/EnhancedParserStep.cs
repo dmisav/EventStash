@@ -1,23 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using GrokNet;
 using Pipeline.PipelineCore.StepsCore;
 
 namespace Pipeline.Steps
 {
-    public class ParserStep : RegularStep<string, Dictionary<string, string>>
+    public class EnhancedParserStep : RegularStep<string, string>
     {
-        private readonly FirewallPaloAltoParser _parser = new();
+        private readonly EnhancedFirewallPaloAltoParser _parser = new();
 
-        public override Dictionary<string, string> ProcessItem(string item)
+        public override string ProcessItem(string logLine)
         {
-            return _parser.Parse(item);
+            return _parser.Parse(logLine);
         }
     }
 
-    public class FirewallPaloAltoParser
+    public class EnhancedFirewallPaloAltoParser
     {
         private const string MainGrokStr =
             "^([^,]+),(?<tempLocalEventTime>[^,]+),%{NUMBER},TRAFFIC,(start|end|drop|deny),[^,]*,[^,]*,%{IP:InternalIP},%{IP:DestinationIP},(%{IP:NATSourceAddress})?,(%{IP:NATDestinationAddress})?,(?<PolicyName>[^,]+),(?<OperationBy>[^,]*),[^,]*,(?<App>[^,]+),[^,]*,(?<SourceZone>[^,]+),(?<DestinationZone>[^,]+),[^,]*,[^,]*,[^,]*,[^,]*,%{NUMBER:SessionID},%{NUMBER}?,%{NUMBER:SourcePort},%{NUMBER:DestinationPort},%{NUMBER:NATSourcePort},%{NUMBER:NATDestinationPort},%{BASE16NUM},(?<Protocol>(udp|tcp|icmp)),(?<VendorStatusReason>(allow|deny|drop.ICMP|drop|reset.both|reset.client|reset.server)),%{NUMBER:Bytes},%{NUMBER:UploadSize},%{NUMBER:DownloadSize},%{NUMBER},[^,]*,[^,]*,(?<ContentFilteringCategory>[^,]+)%{GREEDYDATA}($|\r)";
@@ -33,22 +34,30 @@ namespace Pipeline.Steps
             "NATDestinationAddress"
         };
 
-        public Dictionary<string, string> Parse(string logLine)
+        public string Parse(string logLine)
         {
             var grokResult = _mainGrok.Parse(logLine);
-            var result = new Dictionary<string, string>();
 
             if (!grokResult.Any())
             {
                 return null;
             }
 
-            result.Add("EventType", "NetworkSession");
-            result.Add("OperationSource", "Log");
-            result.Add("EventOperation", "Accessed");
-            result.Add("ObjectType", "Firewall");
-            result.Add("StreamType", "Firewall");
-            result.Add("type", StreamVendor);
+
+            var options = new JsonWriterOptions
+            {
+                Indented = false
+            };
+            using var stream = new MemoryStream();
+            using var writer = new Utf8JsonWriter(stream, options);
+
+            writer.WriteStartObject();
+            writer.WriteString("EventType", "NetworkSession");
+            writer.WriteString("OperationSource", "Log");
+            writer.WriteString("EventOperation", "Accessed");
+            writer.WriteString("ObjectType", "Firewall");
+            writer.WriteString("StreamType", "Firewall");
+            writer.WriteString("type", StreamVendor);
 
             foreach (var grokItem in grokResult)
             {
@@ -58,29 +67,19 @@ namespace Pipeline.Steps
                 if (grokItem.Key == "tempLocalEventTime")
                 {
                     var (localEventTime, eventTime) = _dateParser.ParseDate((string) grokItem.Value);
-                    result.Add("LocalEventTime", localEventTime.ToString());
-                    result.Add("EventTime", eventTime.ToString());
+                    writer.WriteNumber("LocalEventTime", localEventTime);
+                    writer.WriteNumber("EventTime", eventTime);
                 }
                 else
                 {
-                    result.Add(grokItem.Key, grokItem.Value.ToString());
+                    writer.WriteString(grokItem.Key, grokItem.Value.ToString());
                 }
             }
 
-            return result;
-        }
-    }
+            writer.WriteEndObject();
+            writer.Flush();
 
-    public class DummyDateParser
-    {
-        private const string SupportedFormat = "yyyy/MM/dd HH:mm:ss";
-        private readonly DateTime _unixStartDate = new(1970, 1, 1);
-
-        public (double localEventTime, double eventTime) ParseDate(string dt)
-        {
-            var datetime = DateTime.ParseExact(dt, SupportedFormat, CultureInfo.InvariantCulture);
-            return (datetime.Subtract(_unixStartDate).TotalSeconds,
-                datetime.ToUniversalTime().Subtract(_unixStartDate).TotalSeconds);
+            return Encoding.UTF8.GetString(stream.ToArray());
         }
     }
 }
