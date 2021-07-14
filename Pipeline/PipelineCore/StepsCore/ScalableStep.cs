@@ -40,8 +40,10 @@ namespace Pipeline.PipelineCore.StepsCore
                     var scalingCts = new CancellationTokenSource();
                     var inputs = Split(_scalingOptions, scalingCts.Token);
                     var readers = inputs.Select(i => i.Reader).ToArray();
+                    var cancellationTokenWrapper = new CancellationTokenWrapper(ct);
+                    var splittedChannels = Split(_scalingOptions, scalingCts);
 
-                    Merge(readers, ct);
+                    Merge(readers, cancellationTokenWrapper);
 
                     await _taskReloadGate.WaitAsync(ct);
 
@@ -54,7 +56,7 @@ namespace Pipeline.PipelineCore.StepsCore
             }, ct, TaskCreationOptions.LongRunning);
         }
 
-        private IList<Channel<TIn>> Split(ScalingOptions scalingOptions, CancellationToken ct)
+        private IList<ChannelReader<TIn>> Split(ScalingOptions scalingOptions, CancellationTokenWrapper cancellationTokenWrapper)
         {
             var outputs = new Channel<TIn>[scalingOptions.ParallelCount];
             for (var i = 0; i < scalingOptions.ParallelCount; i++)
@@ -66,17 +68,21 @@ namespace Pipeline.PipelineCore.StepsCore
             Task.Run(async () =>
             {
                 var index = 0;
-                await foreach (var item in ChannelIn.ReadAllAsync(ct))
+                await foreach (var item in ReadFromChannelAsync(cancellationTokenWrapper))
                 {
                     await outputs[index].Writer.WriteAsync(item);
                     index = (index + 1) % scalingOptions.ParallelCount;
                 }
-            }, ct);
+                
+                foreach (var ch in outputs)
+                    ch.Writer.Complete();
+
+            }, cancellationTokenWrapper.Token);
 
             return outputs;
         }
 
-        private void Merge(IList<ChannelReader<TIn>> inputs, CancellationToken ct)
+        private void Merge(IList<ChannelReader<TIn>> inputs, CancellationTokenWrapper cancellationTokenWrapper)
         {
             Task.Run(async () =>
             {
@@ -85,12 +91,12 @@ namespace Pipeline.PipelineCore.StepsCore
                     await foreach (var item in input.ReadAllAsync(ct))
                     {
                         var processedItem = ProcessItem(item);
-                        await WriteToChannelAsync(processedItem, ct);
+                        await WriteToChannelAsync(processedItem, cancellationTokenWrapper);
                     }
                 }
 
                 await Task.WhenAll(inputs.Select(i => Redirect(i)).ToArray());
-            }, ct);
+            }, cancellationTokenWrapper.Token);
         }
 
         private void ProcessStateAction(object sender, State state)
