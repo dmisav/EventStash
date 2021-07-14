@@ -104,7 +104,6 @@ namespace Pipeline.PipelineCore.StepsCore
                         return;
 
                     _scalingOptions.ParallelCount = scaledCount;
-                    Console.WriteLine($"INCREASED: {_scalingOptions.ParallelCount }");
                     break;
                 case State.Sinking:
                     var unscaledCount = AutoScalerHelper.UnscaleParallelCount(_scalingOptions);
@@ -113,7 +112,6 @@ namespace Pipeline.PipelineCore.StepsCore
                         return;
 
                     _scalingOptions.ParallelCount = unscaledCount;
-                    Console.WriteLine($"DECCREASED: {_scalingOptions.ParallelCount }");
                     break;
                 case State.Steady:
                     return;
@@ -127,8 +125,6 @@ namespace Pipeline.PipelineCore.StepsCore
             var monitoringAction = new Action(() =>
             {
                 var count = GetCount();
-                Console.WriteLine($"NUmber of channels: {_scalingOptions.ParallelCount}");
-                Console.WriteLine($"Events in the queue: {count}");
                 _trendChecker.UpdateCount(count);
             });
 

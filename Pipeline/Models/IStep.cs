@@ -10,7 +10,7 @@ namespace Pipeline.Models
     {
         IAsyncEnumerable<TIn> ReadFromChannelAsync(CancellationToken ct);
         TOut ProcessItem(TIn item);
-        Task WriteToChannelAsync(TOut item, CancellationToken ct);
+        ValueTask WriteToChannelAsync(TOut item, CancellationToken ct);
         void AssignInputChannel(ChannelReader<TIn> channel);
         void AssignOutputChannel(ChannelWriter<TOut> channel);
     }
