@@ -14,14 +14,9 @@ namespace Pipeline.InputSteps
     public class TcpInputStep : IInput<string>
     {
         private readonly int _port;
-        private readonly int _connectionQueueLength;
         private ChannelWriter<string> _out;
 
-        public TcpInputStep(int port, int connectionQueueLength = 120)
-        {
-            _port = port;
-            _connectionQueueLength = connectionQueueLength;
-        }
+        public TcpInputStep(int port) => _port = port;
 
         public async Task WriteToChannelAsync(string item, CancellationToken ct)
         {
@@ -34,7 +29,7 @@ namespace Pipeline.InputSteps
             {
                 var listenSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
                 listenSocket.Bind(new IPEndPoint(IPAddress.Loopback, _port));
-                listenSocket.Listen(_connectionQueueLength);
+                listenSocket.Listen();
 
                 while (true)
                 {
