@@ -7,7 +7,7 @@ public interface IStep<TIn, TOut>
 {
 	IAsyncEnumerable<TIn> ReadFromChannelAsync(CancellationToken ct);
 	TOut ProcessItem(TIn item);
-	Task WriteToChannelAsync(TOut item, CancellationToken ct);
+	ValueTask WriteToChannelAsync(TOut item, CancellationToken ct);
 	Task StartRoutine(CancellationToken ct);
     void AssignInputChannel(ChannelReader<TIn> channel);
     void AssignOutputChannel(ChannelWriter<TOut> channel);

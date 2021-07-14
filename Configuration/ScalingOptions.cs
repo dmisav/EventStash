@@ -9,6 +9,5 @@ namespace Pipeline.Configuration
         public int ScalingFactor { get; set; } = 2;
         public int TrendDecisionCount { get; set; }
         public CronOptions MonitoringOptions { get; set; }
-        public SemaphoreSlim Gate { get; set; } = new SemaphoreSlim(0);
     }
 }

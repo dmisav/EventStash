@@ -12,61 +12,68 @@ using System.Threading.Tasks;
 
 namespace Pipeline.PipelineCore.StepsCore
 {
-    public abstract class ScalableStep<TIn, TOut> : RegularStep<TIn, TOut>
+    public abstract class ScalableStep<TIn, TOut> : BaseStep<TIn, TOut>
     {
         private readonly ScalingOptions _scalingOptions;
         private readonly TrendChecker _trendChecker;
-
-        private Task _currentRoutine;
-
+        private readonly SemaphoreSlim _taskReloadGate;
         public ScalableStep(ScalingOptions scalingOptions) 
         {
             _scalingOptions = scalingOptions ?? throw new ArgumentNullException(nameof(scalingOptions));
-
             _trendChecker = new TrendChecker(scalingOptions.TrendDecisionCount);
+            _taskReloadGate = new SemaphoreSlim(0);
 
             _trendChecker.StateActionRequired += ProcessStateAction;
-
-            Task.Run(async () => 
-            {
-                await MonitorAsync(_scalingOptions.MonitoringOptions);
-            }, _scalingOptions.MonitoringOptions.CancellationToken);
         }
 
         public override Task StartRoutine(CancellationToken ct)
         {
-            _currentRoutine = new(() =>
+            Task.Run(async () =>
             {
-                var splittedChannels = Split(_scalingOptions, ct);
-                Merge(splittedChannels, ct);
-            }, ct, TaskCreationOptions.LongRunning);
+                await MonitorAsync(_scalingOptions.MonitoringOptions);
+            }, ct);
 
-            return _currentRoutine;
+            return new(async () =>
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    var scalingCts = new CancellationTokenSource();
+                    var inputs = Split(_scalingOptions, scalingCts.Token);
+                    var readers = inputs.Select(i => i.Reader).ToArray();
+
+                    Merge(readers, ct);
+
+                    await _taskReloadGate.WaitAsync(ct);
+
+                    foreach (var ch in inputs)
+                        ch.Writer.Complete();
+
+                    scalingCts.Cancel();
+                }
+                
+            }, ct, TaskCreationOptions.LongRunning);
         }
 
-        private IList<ChannelReader<TIn>> Split(ScalingOptions scalingOptions, CancellationToken ct)
+        private IList<Channel<TIn>> Split(ScalingOptions scalingOptions, CancellationToken ct)
         {
-            var parallelCount = scalingOptions.MaxParallelCount == 0 ? scalingOptions.ParallelCount : Math.Min(scalingOptions.ParallelCount, scalingOptions.MaxParallelCount);
-
             var outputs = new Channel<TIn>[scalingOptions.ParallelCount];
             for (var i = 0; i < scalingOptions.ParallelCount; i++)
-                outputs[i] = Channel.CreateUnbounded<TIn>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
+            {
+                var options = new BoundedChannelOptions(50) { SingleReader = true, SingleWriter = true};
+                outputs[i] = Channel.CreateBounded<TIn>(options);
+            }
 
             Task.Run(async () =>
             {
                 var index = 0;
-                await foreach (var item in ReadFromChannelAsync(ct))
+                await foreach (var item in ChannelIn.ReadAllAsync(ct))
                 {
-                    outputs[index].Writer.TryWrite(item);
+                    await outputs[index].Writer.WriteAsync(item);
                     index = (index + 1) % scalingOptions.ParallelCount;
                 }
-
-                foreach (var ch in outputs)
-                    ch.Writer.Complete();
-
             }, ct);
 
-            return outputs.Select(ch => ch.Reader).ToArray();
+            return outputs;
         }
 
         private void Merge(IList<ChannelReader<TIn>> inputs, CancellationToken ct)
@@ -75,7 +82,7 @@ namespace Pipeline.PipelineCore.StepsCore
             {
                 async Task Redirect(ChannelReader<TIn> input)
                 {
-                    await foreach (var item in input.ReadAllAsync())
+                    await foreach (var item in input.ReadAllAsync(ct))
                     {
                         var processedItem = ProcessItem(item);
                         await WriteToChannelAsync(processedItem, ct);
@@ -91,16 +98,28 @@ namespace Pipeline.PipelineCore.StepsCore
             switch (state)
             {
                 case State.Growing:
-                    _scalingOptions.ParallelCount = AutoScalerHelper.ScaleParallelCount(_scalingOptions);
+                    var scaledCount = AutoScalerHelper.ScaleParallelCount(_scalingOptions);
+
+                    if (_scalingOptions.ParallelCount == scaledCount)
+                        return;
+
+                    _scalingOptions.ParallelCount = scaledCount;
+                    Console.WriteLine($"INCREASED: {_scalingOptions.ParallelCount }");
                     break;
                 case State.Sinking:
-                    _scalingOptions.ParallelCount = AutoScalerHelper.UnscaleParallelCount(_scalingOptions);
+                    var unscaledCount = AutoScalerHelper.UnscaleParallelCount(_scalingOptions);
+
+                    if (_scalingOptions.ParallelCount == unscaledCount)
+                        return;
+
+                    _scalingOptions.ParallelCount = unscaledCount;
+                    Console.WriteLine($"DECCREASED: {_scalingOptions.ParallelCount }");
                     break;
                 case State.Steady:
-                    break;
+                    return;
             }
 
-            _scalingOptions.Gate.Release();
+            _taskReloadGate.Release();
         }
 
         private async Task MonitorAsync(CronOptions cronOptions)
@@ -108,6 +127,8 @@ namespace Pipeline.PipelineCore.StepsCore
             var monitoringAction = new Action(() =>
             {
                 var count = GetCount();
+                Console.WriteLine($"NUmber of channels: {_scalingOptions.ParallelCount}");
+                Console.WriteLine($"Events in the queue: {count}");
                 _trendChecker.UpdateCount(count);
             });
 
