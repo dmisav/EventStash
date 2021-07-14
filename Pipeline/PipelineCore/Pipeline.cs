@@ -18,10 +18,16 @@ namespace Pipeline.PipelineCore
         private List<Type> _pipelineTypes = new List<Type>();
         private List<Task> _pipelineTasks = new List<Task>();
 
+        private UnboundedChannelOptions _channelOptions = new UnboundedChannelOptions
+        {
+            SingleWriter = true,
+            SingleReader = true
+        };
+
         public IPipeline AddInput<TIn>(IInput<TIn> input)
         {
             _input = input;
-            var channel = Channel.CreateUnbounded<TIn>();
+            var channel = Channel.CreateUnbounded<TIn>(_channelOptions);
             input.AssignOutputChannel(channel.Writer);
             _channels.Add(channel);
             _pipelineTypes.Add(typeof(TIn));
@@ -38,7 +44,7 @@ namespace Pipeline.PipelineCore
                 throw new Exception("Can't add step due to previous block output and current step input type mismatch");
 
             _steps.Add(step);
-            var channel = Channel.CreateUnbounded<TOut>();
+            var channel = Channel.CreateUnbounded<TOut>(_channelOptions);
             var lastChannel = (Channel<TIn>)_channels.Last();
             step.AssignInputChannel(lastChannel.Reader);
             step.AssignOutputChannel(channel.Writer);
