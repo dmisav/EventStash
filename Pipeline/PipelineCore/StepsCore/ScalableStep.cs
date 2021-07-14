@@ -38,10 +38,10 @@ namespace Pipeline.PipelineCore.StepsCore
                 while (!ct.IsCancellationRequested)
                 {
                     var scalingCts = new CancellationTokenSource();
-                    var inputs = Split(_scalingOptions, scalingCts.Token);
+                    var scalingCtsWrapper = new CancellationTokenWrapper(scalingCts.Token);
+                    var inputs = Split(_scalingOptions, scalingCtsWrapper);
                     var readers = inputs.Select(i => i.Reader).ToArray();
                     var cancellationTokenWrapper = new CancellationTokenWrapper(ct);
-                    var splittedChannels = Split(_scalingOptions, scalingCts);
 
                     Merge(readers, cancellationTokenWrapper);
 
@@ -56,7 +56,7 @@ namespace Pipeline.PipelineCore.StepsCore
             }, ct, TaskCreationOptions.LongRunning);
         }
 
-        private IList<ChannelReader<TIn>> Split(ScalingOptions scalingOptions, CancellationTokenWrapper cancellationTokenWrapper)
+        private IList<Channel<TIn>> Split(ScalingOptions scalingOptions, CancellationTokenWrapper cancellationTokenWrapper)
         {
             var outputs = new Channel<TIn>[scalingOptions.ParallelCount];
             for (var i = 0; i < scalingOptions.ParallelCount; i++)
@@ -88,7 +88,7 @@ namespace Pipeline.PipelineCore.StepsCore
             {
                 async Task Redirect(ChannelReader<TIn> input)
                 {
-                    await foreach (var item in input.ReadAllAsync(ct))
+                    await foreach (var item in input.ReadAllAsync(cancellationTokenWrapper.Token))
                     {
                         var processedItem = ProcessItem(item);
                         await WriteToChannelAsync(processedItem, cancellationTokenWrapper);
