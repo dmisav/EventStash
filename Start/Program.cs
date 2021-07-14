@@ -32,7 +32,7 @@ namespace Start
             //    .Create(cts.Token)
             //    .Start();
             new Pipeline.PipelineCore.Pipeline()
-                .AddInput(new TcpInputStep(555))
+                .AddInput(new NettyTcpInputStep(555))
                 .AddStep(new ParserStep())
                 .AddStep(new SerializationStep())
                 //.AddOutput(new TcpOutputStepIOutput("127.0.0.1", 556))
@@ -57,6 +57,9 @@ namespace Start
             Console.OutputEncoding = Encoding.UTF8;
             Console.WindowHeight = 50;
             Console.WindowWidth = 80;
+            Console.BackgroundColor = ConsoleColor.White;
+            Console.Clear();
+            Console.ForegroundColor = ConsoleColor.Black;
 
             Console.WriteLine();
             Console.WriteLine(" /\\   ‾\\  /‾‾‾‾\\  /‾‾‾‾\\  /‾‾‾‾\\  ‾|‾  /‾‾‾‾\\ ");
@@ -65,12 +68,12 @@ namespace Start
             Console.WriteLine(" |   \\ |  |            |       |   |   |           ");
             Console.WriteLine(" \\_   \\/  \\____/  \\____/  \\____/  _|_  \\____/ ");
             Console.WriteLine();
-            Console.WriteLine(" /‾‾‾‾\\                          /‾‾‾‾\\                             ");
-            Console.WriteLine(" |                               |                                    ");
-            Console.WriteLine(" |----| |    | |‾‾‾‾ |\\  | ‾‾|‾‾ \\----\\ ‾‾|‾‾   /\\   /‾‾‾' |   |  ");
-            Console.WriteLine(" |       \\  /  |---  | \\ |   |        |   |    /--\\  \\---\\ |---| ");
-            Console.WriteLine(" \\____/   \\/   |____ |  \\|   |   \\____/   |   |    | ,___/ |   |  ");
-            Console.WriteLine();
+            //Console.WriteLine(" /‾‾‾‾\\                          /‾‾‾‾\\                             ");
+            //Console.WriteLine(" |                               |                                    ");
+            //Console.WriteLine(" |----| |    | |‾‾‾‾ |\\  | ‾‾|‾‾ \\----\\ ‾‾|‾‾   /\\   /‾‾‾' |   |  ");
+            //Console.WriteLine(" |       \\  /  |---  | \\ |   |        |   |    /--\\  \\---\\ |---| ");
+            //Console.WriteLine(" \\____/   \\/   |____ |  \\|   |   \\____/   |   |    | ,___/ |   |  ");
+            //Console.WriteLine();
 
             Bitmap bmpSrc = new Bitmap(@"Resources\Nessie.bmp", true);
             ImageDrawer.ConsoleWriteImage(bmpSrc);

@@ -11,6 +11,7 @@
     <EmbeddedResource Remove="FakeHost\**" />
     <None Remove="EventStash\**" />
     <None Remove="FakeHost\**" />
+    <PackageReference Include="DotNettySocket" Version="1.2.0" />
     <PackageReference Include="grok.net" Version="1.0.1" />
     <PackageReference Include="System.IO.Pipelines" Version="5.0.1" />
   </ItemGroup>
