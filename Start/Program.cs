@@ -33,8 +33,7 @@ namespace Start
             //    .Start();
             new Pipeline.PipelineCore.Pipeline()
                 .AddInput(new NettyTcpInputStep(555))
-                .AddStep(new ParserStep())
-                .AddStep(new SerializationStep())
+                .AddStep(new EnhancedParserStep())
                 //.AddOutput(new TcpOutputStepIOutput("127.0.0.1", 556))
                 .AddOutput(new FakeOutput())
                 .Create(cts.Token)
